@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { GraduationCap } from 'lucide-react';
 
+const ALLOWED_EMAIL_DOMAIN = '@aids.act.edu.in';
+
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -12,9 +14,19 @@ export default function Auth() {
 
   const { signIn, signUp } = useAuth();
 
+  const isValidCollegeEmail = (email: string) => {
+    return email.toLowerCase().endsWith(ALLOWED_EMAIL_DOMAIN);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!isValidCollegeEmail(email)) {
+      setError(`Only college email addresses ending with ${ALLOWED_EMAIL_DOMAIN} are allowed.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -77,9 +89,12 @@ export default function Auth() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              placeholder="mentor@college.edu"
+              placeholder={`yourname${ALLOWED_EMAIL_DOMAIN}`}
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Only <span className="font-medium">{ALLOWED_EMAIL_DOMAIN}</span> email addresses are accepted.
+            </p>
           </div>
 
           <div>
