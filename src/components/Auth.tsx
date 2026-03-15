@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { GraduationCap } from 'lucide-react';
 
-const ALLOWED_EMAIL_DOMAIN = '@aids.act.edu.in';
+const ALLOWED_EMAIL_DOMAIN = '.aids@act.edu.in';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -23,8 +23,7 @@ export default function Auth() {
     setError('');
 
     if (!isValidCollegeEmail(email)) {
-      setError(`Only college email addresses ending with ${ALLOWED_EMAIL_DOMAIN} are allowed.`);
-      return;
+      setError('Only college email addresses ending with .aids@act.edu.in are allowed.');
     }
 
     setLoading(true);
