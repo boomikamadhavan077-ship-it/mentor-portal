@@ -80,6 +80,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (authError) throw authError;
 
+      if (authData.user) {
+        await supabase
+          .from('mentors')
+          .upsert(
+            [{ id: authData.user.id, email, full_name: fullName }],
+            { onConflict: 'id', ignoreDuplicates: true }
+          );
+      }
+
       if (authData.user && !authData.session) {
         return { error: null, needsConfirmation: true };
       }
