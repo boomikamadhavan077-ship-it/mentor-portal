@@ -1,13 +1,11 @@
 import { useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { Shield, Eye, EyeOff, GraduationCap } from 'lucide-react';
 
 interface HODAuthProps {
   onLogin: () => void;
   onBack: () => void;
 }
-
-const HOD_EMAIL = 'hod@college.edu';
-const HOD_PASSWORD = 'hod@1234';
 
 export default function HODAuth({ onLogin, onBack }: HODAuthProps) {
   const [email, setEmail] = useState('');
@@ -20,13 +18,36 @@ export default function HODAuth({ onLogin, onBack }: HODAuthProps) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    if (email.trim().toLowerCase() === HOD_EMAIL && password === HOD_PASSWORD) {
-      sessionStorage.setItem('hod_authenticated', 'true');
-      onLogin();
-    } else {
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    if (authError || !data.user) {
       setError('Invalid HOD credentials. Please check your email and password.');
+      setLoading(false);
+      return;
     }
+
+    // Check this user is actually a HOD (not a mentor)
+    const { data: mentorRow } = await supabase
+      .from('mentors')
+      .select('id')
+      .eq('email', email.trim().toLowerCase())
+      .single();
+
+    if (mentorRow) {
+      // This email belongs to a mentor, not HOD
+      await supabase.auth.signOut();
+      setError('This email is registered as a mentor, not HOD.');
+      setLoading(false);
+      return;
+    }
+
+    sessionStorage.setItem('hod_authenticated', 'true');
+    sessionStorage.setItem('hod_email', email.trim().toLowerCase());
+    onLogin();
     setLoading(false);
   };
 
