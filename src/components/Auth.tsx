@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { GraduationCap, Mail } from 'lucide-react';
+import { GraduationCap, MailCheck } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -8,34 +8,14 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const { signIn, signUp } = useAuth();
-
-  const getFriendlyError = (message: string): string => {
-    if (message.toLowerCase().includes('email rate limit exceeded')) {
-      return 'Too many sign-up attempts were made recently. Supabase limits confirmation emails to a few per hour on the free plan. Please wait 1 hour and try again, or ask your Supabase admin to disable "Confirm email" in Authentication settings.';
-    }
-    if (message.toLowerCase().includes('invalid login credentials')) {
-      return 'Incorrect email or password. Please try again.';
-    }
-    if (message.toLowerCase().includes('user already registered')) {
-      return 'An account with this email already exists. Please sign in instead.';
-    }
-    if (message.toLowerCase().includes('email not confirmed')) {
-      return 'Please check your inbox and confirm your email address before signing in.';
-    }
-    if (message.toLowerCase().includes('password should be at least')) {
-      return 'Password must be at least 6 characters long.';
-    }
-    return message;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setInfo('');
     setLoading(true);
 
     try {
@@ -46,20 +26,54 @@ export default function Auth() {
         if (!fullName.trim()) {
           throw new Error('Full name is required');
         }
-        const result = await signUp(email, password, fullName);
-        if (result.error) throw result.error;
-        if (result.needsConfirmation) {
-          setInfo('Account created! Please check your email inbox and click the confirmation link to activate your account.');
-          setLoading(false);
+        if (!email.endsWith('.aids@act.edu.in')) {
+          throw new Error('Only .aids@act.edu.in email addresses are accepted');
+        }
+        const { error, needsConfirmation } = await signUp(email, password, fullName);
+        if (error) throw error;
+        if (needsConfirmation) {
+          setConfirmationSent(true);
           return;
         }
       }
     } catch (err: any) {
-      setError(getFriendlyError(err.message || 'An error occurred'));
+      setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
+
+  if (confirmationSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
+          <div className="flex justify-center mb-6">
+            <div className="bg-green-100 p-4 rounded-full">
+              <MailCheck className="w-10 h-10 text-green-600" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">Check your email</h2>
+          <p className="text-gray-600 mb-2">A confirmation link has been sent to</p>
+          <p className="font-semibold text-blue-600 mb-6">{email}</p>
+          <p className="text-sm text-gray-500 mb-8">
+            Click the link in the email to activate your account. Check your spam folder if you don't see it.
+          </p>
+          <button
+            onClick={() => {
+              setConfirmationSent(false);
+              setIsLogin(true);
+              setEmail('');
+              setPassword('');
+              setFullName('');
+            }}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+          >
+            Back to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -76,15 +90,8 @@ export default function Auth() {
         </p>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
             {error}
-          </div>
-        )}
-
-        {info && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-4 text-sm flex gap-2">
-            <Mail className="w-5 h-5 shrink-0 mt-0.5" />
-            <span>{info}</span>
           </div>
         )}
 
@@ -114,7 +121,7 @@ export default function Auth() {
               required
             />
             {!isLogin && (
-              <p className="mt-1 text-xs text-gray-500">Only .aids@act.edu.in email addresses are accepted.</p>
+              <p className="text-xs text-gray-500 mt-1">Only .aids@act.edu.in email addresses are accepted.</p>
             )}
           </div>
 
@@ -142,7 +149,7 @@ export default function Auth() {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => { setIsLogin(!isLogin); setError(''); setInfo(''); }}
+            onClick={() => { setIsLogin(!isLogin); setError(''); }}
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
             {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
