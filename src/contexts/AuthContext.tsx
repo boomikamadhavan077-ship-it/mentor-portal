@@ -80,8 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (authError) throw authError;
 
-      // If user is returned but unconfirmed (identities array is empty or session is null),
-      // email confirmation is required
       if (authData.user && !authData.session) {
         return { error: null, needsConfirmation: true };
       }

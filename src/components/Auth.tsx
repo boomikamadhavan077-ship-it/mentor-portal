@@ -148,12 +148,6 @@ export default function Auth() {
             {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
           </button>
         </div>
-
-        {!isLogin && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
-            <strong>Note:</strong> If you see an "email rate limit exceeded" error, your Supabase project has hit the free-tier email limit (a few emails/hour). To fix it permanently: go to your Supabase dashboard → Authentication → Settings → turn off <em>"Confirm email"</em>.
-          </div>
-        )}
       </div>
     </div>
   );
