@@ -76,9 +76,16 @@ export default function AddStudent({ onNavigate }: AddStudentProps) {
 
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.message || 'Failed to add student');
-    } finally {
-      setLoading(false);
+  if (
+    err?.code === '23505' ||
+    (err?.message && err.message.toLowerCase().includes('duplicate key'))
+  ) {
+    setError('A student with this register number already exists. Please check the register number and try again.');
+  } else {
+    setError(err.message || 'Failed to add student');
+  }
+} finally {
+     setLoading(false);
     }
   };
 
