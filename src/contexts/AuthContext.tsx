@@ -84,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null, needsConfirmation: true };
       }
 
-      // Mentor profile is created automatically via database trigger (handle_new_user)
       return { error: null };
     } catch (error) {
       return { error: error as Error };
