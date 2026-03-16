@@ -37,7 +37,13 @@ export default function Auth() {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      if (err.message?.includes('seconds')) {
+        setError('Too many attempts. Please wait a moment and try again.');
+      } else if (err.message?.includes('already registered') || err.message?.includes('already been registered')) {
+        setError('This email is already registered. Please sign in instead.');
+      } else {
+        setError(err.message || 'An error occurred');
+      }
     } finally {
       setLoading(false);
     }
