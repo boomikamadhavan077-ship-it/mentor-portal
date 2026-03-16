@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { GraduationCap } from 'lucide-react';
-
-const ALLOWED_EMAIL_DOMAIN = '.aids@act.edu.in';
+import { GraduationCap, Mail } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -10,22 +8,34 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { signIn, signUp } = useAuth();
 
-  const isValidCollegeEmail = (email: string) => {
-    return email.toLowerCase().endsWith(ALLOWED_EMAIL_DOMAIN);
+  const getFriendlyError = (message: string): string => {
+    if (message.toLowerCase().includes('email rate limit exceeded')) {
+      return 'Too many sign-up attempts were made recently. Supabase limits confirmation emails to a few per hour on the free plan. Please wait 1 hour and try again, or ask your Supabase admin to disable "Confirm email" in Authentication settings.';
+    }
+    if (message.toLowerCase().includes('invalid login credentials')) {
+      return 'Incorrect email or password. Please try again.';
+    }
+    if (message.toLowerCase().includes('user already registered')) {
+      return 'An account with this email already exists. Please sign in instead.';
+    }
+    if (message.toLowerCase().includes('email not confirmed')) {
+      return 'Please check your inbox and confirm your email address before signing in.';
+    }
+    if (message.toLowerCase().includes('password should be at least')) {
+      return 'Password must be at least 6 characters long.';
+    }
+    return message;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!isValidCollegeEmail(email)) {
-      setError('Only college email addresses ending with .aids@act.edu.in are allowed.');
-    }
-
+    setInfo('');
     setLoading(true);
 
     try {
@@ -36,11 +46,16 @@ export default function Auth() {
         if (!fullName.trim()) {
           throw new Error('Full name is required');
         }
-        const { error } = await signUp(email, password, fullName);
-        if (error) throw error;
+        const result = await signUp(email, password, fullName);
+        if (result.error) throw result.error;
+        if (result.needsConfirmation) {
+          setInfo('Account created! Please check your email inbox and click the confirmation link to activate your account.');
+          setLoading(false);
+          return;
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(getFriendlyError(err.message || 'An error occurred'));
     } finally {
       setLoading(false);
     }
@@ -61,8 +76,15 @@ export default function Auth() {
         </p>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
             {error}
+          </div>
+        )}
+
+        {info && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-4 text-sm flex gap-2">
+            <Mail className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>{info}</span>
           </div>
         )}
 
@@ -88,12 +110,12 @@ export default function Auth() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              placeholder={`yourname${ALLOWED_EMAIL_DOMAIN}`}
+              placeholder="mentor@college.edu"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Only <span className="font-medium">{ALLOWED_EMAIL_DOMAIN}</span> email addresses are accepted.
-            </p>
+            {!isLogin && (
+              <p className="mt-1 text-xs text-gray-500">Only .aids@act.edu.in email addresses are accepted.</p>
+            )}
           </div>
 
           <div>
@@ -120,12 +142,18 @@ export default function Auth() {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => { setIsLogin(!isLogin); setError(''); }}
+            onClick={() => { setIsLogin(!isLogin); setError(''); setInfo(''); }}
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
             {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
           </button>
         </div>
+
+        {!isLogin && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
+            <strong>Note:</strong> If you see an "email rate limit exceeded" error, your Supabase project has hit the free-tier email limit (a few emails/hour). To fix it permanently: go to your Supabase dashboard → Authentication → Settings → turn off <em>"Confirm email"</em>.
+          </div>
+        )}
       </div>
     </div>
   );

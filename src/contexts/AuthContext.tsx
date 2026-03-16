@@ -8,7 +8,7 @@ interface AuthContextType {
   mentor: Mentor | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -70,18 +70,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
+      });
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('mentors')
-          .insert([{ id: authData.user.id, email, full_name: fullName }]);
-
-        if (profileError) throw profileError;
+      // If user is returned but unconfirmed (identities array is empty or session is null),
+      // email confirmation is required
+      if (authData.user && !authData.session) {
+        return { error: null, needsConfirmation: true };
       }
 
+      // Mentor profile is created automatically via database trigger (handle_new_user)
       return { error: null };
     } catch (error) {
       return { error: error as Error };
