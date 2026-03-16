@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { GraduationCap, MailCheck } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -9,12 +9,36 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { signIn, signUp } = useAuth();
 
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  const startCooldown = (seconds: number) => {
+    setCooldown(seconds);
+    timerRef.current = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const extractCooldownSeconds = (message: string): number => {
+    const match = message.match(/after (\d+) seconds/);
+    return match ? parseInt(match[1]) + 2 : 60;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldown > 0) return;
     setError('');
     setLoading(true);
 
@@ -26,60 +50,22 @@ export default function Auth() {
         if (!fullName.trim()) {
           throw new Error('Full name is required');
         }
-        if (!email.endsWith('.aids@act.edu.in')) {
-          throw new Error('Only .aids@act.edu.in email addresses are accepted');
-        }
-        const { error, needsConfirmation } = await signUp(email, password, fullName);
+        const { error } = await signUp(email, password, fullName);
         if (error) throw error;
-        if (needsConfirmation) {
-          setConfirmationSent(true);
-          return;
-        }
       }
     } catch (err: any) {
-      if (err.message?.includes('seconds')) {
-        setError('Too many attempts. Please wait a moment and try again.');
-      } else if (err.message?.includes('already registered') || err.message?.includes('already been registered')) {
-        setError('This email is already registered. Please sign in instead.');
+      const message = err.message || 'An error occurred';
+      if (message.includes('after') && message.includes('seconds')) {
+        const secs = extractCooldownSeconds(message);
+        startCooldown(secs);
+        setError(`Please wait ${secs} seconds before trying again.`);
       } else {
-        setError(err.message || 'An error occurred');
+        setError(message);
       }
     } finally {
       setLoading(false);
     }
   };
-
-  if (confirmationSent) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
-          <div className="flex justify-center mb-6">
-            <div className="bg-green-100 p-4 rounded-full">
-              <MailCheck className="w-10 h-10 text-green-600" />
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-3">Check your email</h2>
-          <p className="text-gray-600 mb-2">A confirmation link has been sent to</p>
-          <p className="font-semibold text-blue-600 mb-6">{email}</p>
-          <p className="text-sm text-gray-500 mb-8">
-            Click the link in the email to activate your account. Check your spam folder if you don't see it.
-          </p>
-          <button
-            onClick={() => {
-              setConfirmationSent(false);
-              setIsLogin(true);
-              setEmail('');
-              setPassword('');
-              setFullName('');
-            }}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-          >
-            Back to Sign In
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -146,16 +132,22 @@ export default function Auth() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || cooldown > 0}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Sign Up'}
+            {loading
+              ? 'Please wait...'
+              : cooldown > 0
+              ? `Wait ${cooldown}s...`
+              : isLogin
+              ? 'Sign In'
+              : 'Sign Up'}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => { setIsLogin(!isLogin); setError(''); }}
+            onClick={() => { setIsLogin(!isLogin); setError(''); setCooldown(0); }}
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
             {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
