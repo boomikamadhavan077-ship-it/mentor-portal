@@ -53,7 +53,8 @@ function App() {
       <HODDashboard
         onLogout={() => {
           sessionStorage.removeItem('hod_authenticated');
-          setAppMode('mentor');
+          sessionStorage.removeItem('hod_email');
+          setAppMode('hod-login');
         }}
       />
     );
