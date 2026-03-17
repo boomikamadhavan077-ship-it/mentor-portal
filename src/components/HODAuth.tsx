@@ -38,12 +38,19 @@ export default function HODAuth({ onLogin, onBack }: HODAuthProps) {
       .single();
 
     if (mentorRow) {
-      // This email belongs to a mentor, not HOD
       await supabase.auth.signOut();
       setError('This email is registered as a mentor, not HOD.');
       setLoading(false);
       return;
     }
+
+    // Save HOD profile to hod_profiles table
+    await supabase.from('hod_profiles').upsert({
+      id: data.user.id,
+      email: data.user.email,
+      full_name: data.user.user_metadata?.full_name || 'HOD',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
 
     sessionStorage.setItem('hod_authenticated', 'true');
     sessionStorage.setItem('hod_email', email.trim().toLowerCase());
