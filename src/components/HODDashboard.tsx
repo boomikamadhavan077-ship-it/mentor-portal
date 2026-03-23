@@ -69,7 +69,6 @@ export default function HODDashboard({ onLogout }: HODDashboardProps) {
         ...s, mentor: mMap[s.mentor_id],
       }));
 
-      // Group students under each mentor
       const grouped: MentorWithStudents[] = (mentors || []).map(m => ({
         ...m,
         students: (students || []).filter(s => s.mentor_id === m.id),
@@ -114,68 +113,128 @@ export default function HODDashboard({ onLogout }: HODDashboardProps) {
     });
   };
 
-  const generateStudentPDF = (student: StudentWithMentor) => {
-    const mentorName = student.mentor?.full_name || 'Not Assigned';
-    const mentorEmail = student.mentor?.email || '—';
-    const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
-    const cgpaColor = student.cgpa >= 7.5 ? '#16a34a' : student.cgpa >= 6.0 ? '#d97706' : '#dc2626';
-    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
-<title>Student Profile — ${student.student_name}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;color:#1e293b}
-  .page{width:794px;min-height:1123px;margin:0 auto;background:white;padding:40px 48px}
-  .header{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:16px;padding:28px 32px;color:white;margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-start}
-  .header-left h1{font-size:22px;font-weight:700;margin-bottom:4px}.header-left p{font-size:13px;opacity:.85}
-  .header-right{text-align:right;font-size:12px;opacity:.85;line-height:1.8}
-  .badge{display:inline-block;background:rgba(255,255,255,.2);border-radius:999px;padding:4px 14px;font-size:11px;font-weight:600;margin-top:8px}
-  .gpa-strip{display:flex;gap:12px;margin-bottom:24px}
-  .gpa-box{flex:1;border-radius:12px;padding:18px 20px;border:1px solid #e2e8f0}
-  .gpa-box .label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:6px}
-  .gpa-box .val{font-size:28px;font-weight:800}.gpa-box .sub{font-size:11px;color:#94a3b8;margin-top:2px}
-  .section{border:1px solid #e2e8f0;border-radius:12px;margin-bottom:18px;overflow:hidden}
-  .section-title{background:#f1f5f9;padding:12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#475569;border-bottom:1px solid #e2e8f0}
-  .section-body{padding:18px 20px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-  .field label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;display:block;margin-bottom:3px}
-  .field span{font-size:13px;color:#1e293b;font-weight:500}.full-width{grid-column:1/-1}
-  .mentor-box{background:linear-gradient(135deg,#ede9fe,#e0e7ff);border:1px solid #c4b5fd;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
-  .mentor-box .name{font-size:15px;font-weight:700;color:#4f46e5}.mentor-box .email{font-size:12px;color:#6d28d9;margin-top:2px}
-  .mentor-badge{background:#4f46e5;color:white;font-size:10px;font-weight:700;padding:4px 12px;border-radius:999px}
-  .footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#94a3b8}
-  .footer strong{color:#475569}@media print{body{background:white}.page{padding:24px 32px;box-shadow:none}}
-</style></head><body><div class="page">
-  <div class="header"><div class="header-left"><h1>${student.student_name}</h1><p>Register Number: <strong>${student.register_number}</strong></p><span class="badge">HOD — Official Record</span></div>
-  <div class="header-right"><div>📅 ${today}</div><div>📧 ${student.email}</div><div>📞 ${student.phone_number}</div></div></div>
-  <div class="gpa-strip">
-    <div class="gpa-box" style="background:#f0fdf4;border-color:#86efac"><div class="label">CGPA</div><div class="val" style="color:${cgpaColor}">${Number(student.cgpa).toFixed(2)}</div><div class="sub">Cumulative GPA</div></div>
-    <div class="gpa-box" style="background:#eff6ff;border-color:#93c5fd"><div class="label">GPA (Sem)</div><div class="val" style="color:#2563eb">${Number(student.gpa).toFixed(2)}</div><div class="sub">Current Semester</div></div>
-    <div class="gpa-box" style="background:${student.arrears_details?.trim() ? '#fef2f2' : '#f0fdf4'};border-color:${student.arrears_details?.trim() ? '#fca5a5' : '#86efac'}"><div class="label">Arrears</div><div class="val" style="font-size:16px;color:${student.arrears_details?.trim() ? '#dc2626' : '#16a34a'};margin-top:4px">${student.arrears_details?.trim() ? '⚠ Has Arrears' : '✓ Clear'}</div><div class="sub">${student.arrears_details?.trim() ? student.arrears_details : 'No arrears'}</div></div>
-  </div>
-  <div class="section"><div class="section-title">Personal Information</div><div class="section-body"><div class="grid2">
-    <div class="field"><label>Date of Birth</label><span>${new Date(student.date_of_birth).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
-    <div class="field"><label>Blood Group</label><span>${student.blood_group}</span></div>
-    <div class="field full-width"><label>Address</label><span>${student.address}</span></div>
-  </div></div></div>
-  <div class="section"><div class="section-title">Parent / Guardian</div><div class="section-body"><div class="grid3">
-    <div class="field"><label>Parent Name</label><span>${student.parent_name}</span></div>
-    <div class="field"><label>Occupation</label><span>${student.parent_occupation}</span></div>
-    <div class="field"><label>Contact</label><span>${student.parent_phone}</span></div>
-  </div></div></div>
-  <div class="section"><div class="section-title">Academic Details</div><div class="section-body"><div class="grid2" style="margin-bottom:14px">
-    <div class="field"><label>Scholarship</label><span>${student.scholarship_details?.trim() || 'None'}</span></div>
-    <div class="field"><label>Hackathons</label><span>${student.hackathon_details?.trim() || 'None'}</span></div>
-  </div><div class="field"><label>Siblings</label><span>${student.siblings_details?.trim() || 'Not provided'}</span></div></div></div>
-  <div class="section"><div class="section-title">Assigned Mentor</div><div class="section-body"><div class="mentor-box">
-    <div><div class="name">${mentorName}</div><div class="email">${mentorEmail}</div></div>
-    <span class="mentor-badge">MENTOR</span>
-  </div></div></div>
-  <div class="footer"><span>📄 Student Profile · Mentor Management System</span><span>Generated by <strong>HOD Portal</strong> · ${today}</span></div>
-</div></body></html>`;
-    const win = window.open('', '_blank', 'width=900,height=700');
-    if (!win) { alert('Please allow popups for PDF generation.'); return; }
-    win.document.write(html);
-    win.document.close();
-    win.onload = () => { win.focus(); win.print(); };
+  const generateStudentPDF = async (student: StudentWithMentor) => {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 18;
+    const contentWidth = pageWidth - margin * 2;
+    let y = 0;
+
+    const checkBreak = (h = 10) => { if (y + h > pageHeight - margin) { doc.addPage(); y = margin; } };
+
+    const section = (title: string) => {
+      checkBreak(14);
+      doc.setFillColor(79, 70, 229);
+      doc.rect(margin, y, contentWidth, 8, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255);
+      doc.text(title, margin + 4, y + 5.5);
+      doc.setTextColor(0, 0, 0); y += 12;
+    };
+
+    const row = (label: string, value: string, l2?: string, v2?: string) => {
+      checkBreak(12);
+      const cw = l2 ? contentWidth / 2 - 2 : contentWidth;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(80, 80, 80);
+      doc.text(label, margin + 2, y);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(20, 20, 20);
+      const lines = doc.splitTextToSize(value || '—', cw - 4);
+      doc.text(lines, margin + 2, y + 4.5);
+      if (l2 && v2 !== undefined) {
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
+        doc.text(l2, margin + contentWidth / 2 + 4, y);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(20, 20, 20);
+        doc.text(doc.splitTextToSize(v2 || '—', cw - 4), margin + contentWidth / 2 + 4, y + 4.5);
+      }
+      y += Math.max(lines.length, 1) * 4.5 + 5;
+    };
+
+    // Header
+    doc.setFillColor(79, 70, 229);
+    doc.rect(0, 0, pageWidth, 32, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(255, 255, 255);
+    doc.text('STUDENT PROFILE REPORT', pageWidth / 2, 13, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(200, 210, 255);
+    doc.text('ACT College of Engineering — HOD Portal', pageWidth / 2, 21, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, pageWidth / 2, 27, { align: 'center' });
+    y = 40;
+
+    // Name banner
+    doc.setFillColor(237, 233, 254);
+    doc.roundedRect(margin, y, contentWidth, 18, 3, 3, 'F');
+    doc.setDrawColor(167, 139, 250);
+    doc.roundedRect(margin, y, contentWidth, 18, 3, 3, 'S');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(79, 70, 229);
+    doc.text(student.student_name, margin + 6, y + 7);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(80, 80, 80);
+    doc.text(`Reg No: ${student.register_number}   |   HOD — Official Record`, margin + 6, y + 13);
+    y += 24;
+
+    // CGPA / GPA / Arrears boxes
+    const boxW = (contentWidth - 8) / 3;
+    const cgpaColor: [number, number, number] = student.cgpa >= 7.5 ? [22, 163, 74] : student.cgpa >= 6 ? [202, 138, 4] : [220, 38, 38];
+    const gpaColor: [number, number, number] = student.gpa >= 7.5 ? [22, 163, 74] : student.gpa >= 6 ? [202, 138, 4] : [220, 38, 38];
+    const arrearColor: [number, number, number] = student.arrears_details?.trim() ? [220, 38, 38] : [22, 163, 74];
+    [
+      { label: 'CGPA', value: Number(student.cgpa).toFixed(2), sub: 'Cumulative GPA', color: cgpaColor },
+      { label: 'GPA (SEM)', value: Number(student.gpa).toFixed(2), sub: 'Current Semester', color: gpaColor },
+      { label: 'ARREARS', value: student.arrears_details?.trim() ? 'Active' : 'Clear', sub: student.arrears_details?.trim() ? student.arrears_details.substring(0, 18) : 'No arrears', color: arrearColor },
+    ].forEach((box, i) => {
+      const bx = margin + i * (boxW + 4);
+      doc.setFillColor(249, 250, 251); doc.roundedRect(bx, y, boxW, 22, 2, 2, 'F');
+      doc.setDrawColor(220, 220, 220); doc.roundedRect(bx, y, boxW, 22, 2, 2, 'S');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 100, 100);
+      doc.text(box.label, bx + boxW / 2, y + 5.5, { align: 'center' });
+      doc.setFontSize(14); doc.setTextColor(...box.color);
+      doc.text(box.value, bx + boxW / 2, y + 14, { align: 'center' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(120, 120, 120);
+      doc.text(box.sub, bx + boxW / 2, y + 19, { align: 'center' });
+    });
+    y += 28;
+
+    section('PERSONAL INFORMATION');
+    row('Date of Birth', new Date(student.date_of_birth).toLocaleDateString('en-IN'), 'Blood Group', student.blood_group);
+    row('Email', student.email, 'Phone', student.phone_number);
+    row('Address', student.address);
+    y += 2;
+
+    section('PARENT / GUARDIAN');
+    row('Parent Name', student.parent_name, 'Occupation', student.parent_occupation);
+    row('Contact', student.parent_phone);
+    y += 2;
+
+    section('ACADEMIC DETAILS');
+    row('Scholarship', student.scholarship_details || 'None', 'Hackathons', student.hackathon_details || 'None');
+    row('Siblings', student.siblings_details || 'Not provided');
+    if (student.arrears_details?.trim()) {
+      checkBreak(14);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(80, 80, 80);
+      doc.text('Arrear Subjects', margin + 2, y); y += 5;
+      doc.setFillColor(254, 242, 242);
+      const al = doc.splitTextToSize(student.arrears_details, contentWidth - 8);
+      doc.rect(margin, y, contentWidth, al.length * 4.5 + 4, 'F');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(185, 28, 28);
+      doc.text(al, margin + 4, y + 4); y += al.length * 4.5 + 8;
+    }
+    y += 2;
+
+    section('ASSIGNED MENTOR');
+    row('Mentor Name', student.mentor?.full_name || 'Not Assigned', 'Mentor Email', student.mentor?.email || '—');
+    row('Mentor Email', student.mentor?.email || '—');
+
+    // Footer on every page
+    const total = doc.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(150, 150, 150);
+      doc.text('ACT College — HOD Portal | Confidential', margin, pageHeight - 7);
+      doc.text(`Page ${i} of ${total}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
+    }
+
+    doc.save(`${student.register_number}_${student.student_name.replace(/\s+/g, '_')}_Profile.pdf`);
   };
 
   const statCards = [
@@ -275,7 +334,6 @@ export default function HODDashboard({ onLogout }: HODDashboardProps) {
               const lowCGPA = mentor.students.filter(s => s.cgpa < 7.0).length;
               return (
                 <div key={mentor.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                  {/* Mentor Header */}
                   <div className="flex items-center justify-between px-5 py-4 gap-4">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
@@ -309,7 +367,6 @@ export default function HODDashboard({ onLogout }: HODDashboardProps) {
                     </button>
                   </div>
 
-                  {/* Mentee List */}
                   {isExpanded && (
                     <div className="border-t border-gray-100">
                       {mentor.students.length === 0 ? (
