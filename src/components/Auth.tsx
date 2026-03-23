@@ -23,11 +23,13 @@ export default function Auth({ onHODLogin }: AuthProps) {
   }, []);
 
   const startCooldown = (seconds: number) => {
+    if (timerRef.current) clearInterval(timerRef.current);
     setCooldown(seconds);
     timerRef.current = setInterval(() => {
       setCooldown(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
+          timerRef.current = null;
           return 0;
         }
         return prev - 1;
@@ -67,7 +69,8 @@ export default function Auth({ onHODLogin }: AuthProps) {
         startCooldown(secs);
         setError(`Please wait ${secs} seconds before trying again.`);
       } else if (message.includes('already registered') || message.includes('already been registered')) {
-        setError('This email is already registered. Please sign in instead.');
+        setError('This email is already registered. Switching to Sign In...');
+        setIsLogin(true);
       } else {
         setError(message);
       }
@@ -156,7 +159,15 @@ export default function Auth({ onHODLogin }: AuthProps) {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => { setIsLogin(!isLogin); setError(''); setCooldown(0); }}
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError('');
+              setCooldown(0);
+              if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+              }
+            }}
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
             {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
